@@ -54,58 +54,61 @@ public class Bidder extends Agent {
         getContentManager().registerLanguage(codec, FIPANames.ContentLanguage.FIPA_SL);
         getContentManager().registerOntology(onto);
 
-        MessageTemplate mt = (MessageTemplate.and(MessageTemplate.and(MessageTemplate.MatchOntology(onto.getName()),
-                MessageTemplate.MatchLanguage(codec.getName())), MessageTemplate.MatchPerformative(ACLMessage.CFP)));
-
-        // RESPOND TO HELP REQUEST
-        addBehaviour(new ContractNetResponder(this, mt){
-            @Override
-            protected ACLMessage handleCfp(ACLMessage cfp) throws RefuseException, FailureException, NotUnderstoodException {
-                ACLMessage reply = cfp.createReply();
-                //process the content
-                reply = new ACLMessage(ACLMessage.PROPOSE);
-                //calculate the UTILITY
-                float utility = r.nextFloat();
-
-                reply.setOntology(onto.getName());
-                reply.setLanguage(codec.getName());
-
-                SendResult sr = new SendResult();
-                sr.setResult(utility);
-
-                Action a = new Action(getAID(), sr);
-                try {
-                    getContentManager().fillContent(reply, a);
-                } catch (Codec.CodecException ce) {
-                    ce.printStackTrace();
-                } catch (OntologyException oe) {
-                    oe.printStackTrace();
-                }
-
-                return reply;
-            }
-
-            @Override
-            protected ACLMessage handleAcceptProposal(ACLMessage cfp, ACLMessage propose, ACLMessage accept) throws FailureException {
-                //go and help
-                // update status
-                // inform about result of the action
-                ACLMessage result = cfp.createReply();
-                result.setPerformative(ACLMessage.INFORM);
-                //result.setContent of the information
-                return result;
-            }
-        });
 
 
         // SEND HELP REQUESTS
         //TODO
         //change to cyclic behaviour for listening to Gom
-        addBehaviour(new TickerBehaviour(this, 5000) {
+        addBehaviour(new TickerBehaviour(this, 10000) {
             ArrayList<AID> responders;
             // on message received from he Gom
             @Override
             protected void onTick() {
+                MessageTemplate mt = MessageTemplate.and(MessageTemplate.MatchOntology(onto.getName()),
+                        MessageTemplate.MatchLanguage(codec.getName()));
+
+                // RESPOND TO HELP REQUEST
+                addBehaviour(new ContractNetResponder(bidder, mt){
+                    @Override
+                    protected ACLMessage handleCfp(ACLMessage cfp) throws RefuseException, FailureException, NotUnderstoodException {
+                        ACLMessage reply = cfp.createReply();
+                        //process the content
+                        reply.setPerformative(ACLMessage.PROPOSE);
+                        //calculate the UTILITY
+                        float utility = r.nextFloat();
+
+                        reply.setOntology(onto.getName());
+                        reply.setLanguage(codec.getName());
+
+                        SendResult sr = new SendResult();
+                        sr.setResult(utility);
+
+                        Action a = new Action(getAID(), sr);
+                        try {
+                            getContentManager().fillContent(reply, a);
+                        } catch (Codec.CodecException ce) {
+                            ce.printStackTrace();
+                        } catch (OntologyException oe) {
+                            oe.printStackTrace();
+                        }
+
+                        System.out.println("REPLY: "+reply);
+
+                        return reply;
+                    }
+
+                    @Override
+                    protected ACLMessage handleAcceptProposal(ACLMessage cfp, ACLMessage propose, ACLMessage accept) throws FailureException {
+                        //go and help
+                        // update status
+                        // inform about result of the action
+                        ACLMessage result = cfp.createReply();
+                        result.setPerformative(ACLMessage.INFORM);
+                        //result.setContent of the information
+                        return result;
+                    }
+                });
+
                 // info from the gom's request
                 int trNumber = 2;
                 int tokens = 10;
@@ -132,7 +135,8 @@ public class Bidder extends Agent {
                     // initialize cfp
                     ACLMessage bid = new ACLMessage(ACLMessage.CFP);
                     for (int i = 0; i < responders.size(); ++i) {
-                        bid.addReceiver(responders.get(i));
+                        if(!responders.get(i).equals(getAID()))
+                            bid.addReceiver(responders.get(i));
                     }
 
                     bid.setOntology(onto.getName());
@@ -160,6 +164,7 @@ public class Bidder extends Agent {
                     bidder.addBehaviour(new ContractNetInitiator(bidder,bid){
                         @Override
                         protected void handleAllResponses(Vector responses, Vector acceptances) {
+                            System.out.println("HANDLE RESPONSES");
                             java.util.ArrayList<ACLMessage> results = new java.util.ArrayList<>();
                             // process all the utility function results
                             for(Object proposal:responses){
@@ -171,9 +176,14 @@ public class Bidder extends Agent {
                             Collections.sort(results, comparator);
                             // accept best trNumber proposals
                             for(int i=0;i<trNumber;i++){
-                                acceptances.add(results.get(i));
+                                ACLMessage m = results.get(i);
+                                m.setPerformative(ACLMessage.ACCEPT_PROPOSAL);
+                                acceptances.add(m);
+                                System.out.println("ACCEPT REPLY: "+m);
                             }
                         }
+
+
                     });
 
                 }
