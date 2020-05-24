@@ -16,7 +16,6 @@ import jade.util.leap.ArrayList;
 
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Random;
 import java.util.Vector;
 
 public class Bidder extends Agent {
@@ -26,8 +25,6 @@ public class Bidder extends Agent {
     @Override
     protected void setup() {
         super.setup();
-
-
 
         // add oneself to the df
         DFAgentDescription dfd = new DFAgentDescription();
@@ -48,6 +45,8 @@ public class Bidder extends Agent {
 
         MessageTemplate mt = (MessageTemplate.and(MessageTemplate.and(MessageTemplate.MatchOntology(onto.getName()),
                 MessageTemplate.MatchLanguage(codec.getName())), MessageTemplate.MatchPerformative(ACLMessage.CFP)));
+
+        // RESPOND TO HELP REQUEST
         addBehaviour(new ContractNetResponder(this, mt){
             @Override
             protected ACLMessage handleCfp(ACLMessage cfp) throws RefuseException, FailureException, NotUnderstoodException {
@@ -72,6 +71,8 @@ public class Bidder extends Agent {
             }
         });
 
+
+        // SEND HELP REQUESTS
         //TODO
         //change to cyclic behaviour for listening to Gom
         addBehaviour(new TickerBehaviour(this, 5000) {
