@@ -1,22 +1,25 @@
 package biddingOntology;
 
-public class Gom {
-    private Integer id;
-    private Position pos;
+import jade.content.Concept;
+import jade.core.AID;
 
-    public Integer getId() {
-        return id;
+public class Gom implements Concept {
+    private AID gomId;
+    private Position position;
+
+    public AID getGomId() {
+        return gomId;
     }
 
-    public void setId(Integer id) {
-        this.id = id;
+    public void setGomId(AID gomId) {
+        this.gomId = gomId;
     }
 
-    public Position getPos() {
-        return pos;
+    public Position getPosition() {
+        return position;
     }
 
-    public void setPos(Position pos) {
-        this.pos = pos;
+    public void setPosition(Position position) {
+        this.position = position;
     }
 }

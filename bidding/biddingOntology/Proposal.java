@@ -1,6 +1,8 @@
 package biddingOntology;
 
-public class Proposal {
+import jade.content.Concept;
+
+public class Proposal implements Concept {
     private Integer proposalId;
     private Integer trNumber;
     private Gom destGom, srcGom;

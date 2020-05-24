@@ -1,13 +1,15 @@
 package biddingOntology;
 
-public class GetHelp {
-    private Proposal prop;
+import jade.content.AgentAction;
 
-    public Proposal getProp() {
-        return prop;
+public class GetHelp implements AgentAction {
+    private Proposal proposal;
+
+    public Proposal getProposal() {
+        return proposal;
     }
 
-    public void setProp(Proposal prop) {
-        this.prop = prop;
+    public void setProposal(Proposal proposal) {
+        this.proposal = proposal;
     }
 }
