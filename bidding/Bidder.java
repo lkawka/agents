@@ -1,5 +1,6 @@
+import behaviours.HelpInitiator;
+import behaviours.HelpResponder;
 import biddingOntology.*;
-import jade.content.ContentElement;
 import jade.content.lang.Codec;
 import jade.content.lang.sl.SLCodec;
 import jade.content.onto.Ontology;
@@ -7,6 +8,7 @@ import jade.content.onto.OntologyException;
 import jade.content.onto.basic.Action;
 import jade.core.AID;
 import jade.core.Agent;
+import jade.core.behaviours.CyclicBehaviour;
 import jade.core.behaviours.TickerBehaviour;
 import jade.domain.DFService;
 import jade.domain.FIPAAgentManagement.*;
@@ -14,8 +16,6 @@ import jade.domain.FIPAException;
 import jade.domain.FIPANames;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
-import jade.proto.ContractNetInitiator;
-import jade.proto.ContractNetResponder;
 
 import java.util.*;
 
@@ -29,9 +29,52 @@ public class Bidder extends Agent {
     protected void setup() {
         super.setup();
 
-        Random r = new Random();
-
         // add oneself to the df
+        addToDf();
+
+        // info on TR's gom
+        myGom = new Gom();
+        myGom.setGomId(new AID("someGom", AID.ISLOCALNAME));
+        myGom.setPosition(new Position(0, 0));
+
+        getContentManager().registerLanguage(codec, FIPANames.ContentLanguage.FIPA_SL);
+        getContentManager().registerOntology(onto);
+
+        // RESPOND TO HELP REQUEST
+        addBehaviour(new CyclicBehaviour() {
+            MessageTemplate mt = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.CFP),
+                    MessageTemplate.and(MessageTemplate.MatchOntology(onto.getName()),
+                            MessageTemplate.MatchLanguage(codec.getName())));
+
+            @Override
+            public void action() {
+                ACLMessage cfp = myAgent.receive(mt);
+                if (cfp != null) {
+                    myAgent.addBehaviour(new HelpResponder(myAgent, cfp));
+                } else {
+                    block();
+                }
+            }
+        });
+
+        // SEND HELP REQUESTS
+        // TODO change to cyclic whenever request from gom is received
+        addBehaviour(new TickerBehaviour(this, 10000) {
+            @Override
+            protected void onTick() {
+                if (myAgent.getLocalName().contains("TR1")) {
+                    ACLMessage bid = new ACLMessage(ACLMessage.CFP);
+                    ACLMessage gomRequest = new ACLMessage(ACLMessage.REQUEST);
+                    // info from the gom's request
+                    int trNumber = prepareCfp(gomRequest, bid, myAgent);
+                    myAgent.addBehaviour(new HelpInitiator(myAgent, bid, trNumber));
+                }
+            }
+        });
+    }
+
+
+    private void addToDf() {
         DFAgentDescription dfd = new DFAgentDescription();
         dfd.setName(getAID());
         ServiceDescription sd = new ServiceDescription();
@@ -40,184 +83,73 @@ public class Bidder extends Agent {
         dfd.addServices(sd);
         try {
             DFService.register(this, dfd);
-        }
-        catch (FIPAException fe) {
+        } catch (FIPAException fe) {
             fe.printStackTrace();
         }
+    }
 
+    private int prepareCfp(ACLMessage gomRequest, ACLMessage bid, Agent bidder) {
+        ArrayList<AID> responders = new ArrayList<>();
 
-        Agent bidder = this;
-        myGom = new Gom();
-        myGom.setGomId(new AID("someGom", AID.ISLOCALNAME));
-        myGom.setPosition(new Position(0,0));
+        // to be retrieved from the gomRequest
+        int trNumber = 2;
+        int tokens = 10;
+        Gom destGom = new Gom();
+        destGom.setPosition(new Position(1, 1));
+        destGom.setGomId(new AID("someGom2", AID.ISLOCALNAME));
 
-        getContentManager().registerLanguage(codec, FIPANames.ContentLanguage.FIPA_SL);
-        getContentManager().registerOntology(onto);
-
-
-
-        // SEND HELP REQUESTS
-        //TODO
-        //change to cyclic behaviour for listening to Gom
-        addBehaviour(new TickerBehaviour(this, 10000) {
-            ArrayList<AID> responders;
-            // on message received from he Gom
-            @Override
-            protected void onTick() {
-                MessageTemplate mt = MessageTemplate.and(MessageTemplate.MatchOntology(onto.getName()),
-                        MessageTemplate.MatchLanguage(codec.getName()));
-
-                // RESPOND TO HELP REQUEST
-                addBehaviour(new ContractNetResponder(bidder, mt){
-                    @Override
-                    protected ACLMessage handleCfp(ACLMessage cfp) throws RefuseException, FailureException, NotUnderstoodException {
-                        ACLMessage reply = cfp.createReply();
-                        //process the content
-                        reply.setPerformative(ACLMessage.PROPOSE);
-                        //calculate the UTILITY
-                        float utility = r.nextFloat();
-
-                        reply.setOntology(onto.getName());
-                        reply.setLanguage(codec.getName());
-
-                        SendResult sr = new SendResult();
-                        sr.setResult(utility);
-
-                        Action a = new Action(getAID(), sr);
-                        try {
-                            getContentManager().fillContent(reply, a);
-                        } catch (Codec.CodecException ce) {
-                            ce.printStackTrace();
-                        } catch (OntologyException oe) {
-                            oe.printStackTrace();
-                        }
-
-                        System.out.println("REPLY: "+reply);
-
-                        return reply;
-                    }
-
-                    @Override
-                    protected ACLMessage handleAcceptProposal(ACLMessage cfp, ACLMessage propose, ACLMessage accept) throws FailureException {
-                        //go and help
-                        // update status
-                        // inform about result of the action
-                        ACLMessage result = cfp.createReply();
-                        result.setPerformative(ACLMessage.INFORM);
-                        //result.setContent of the information
-                        return result;
-                    }
-                });
-
-                // info from the gom's request
-                int trNumber = 2;
-                int tokens = 10;
-                Gom destGom = new Gom();
-                destGom.setPosition(new Position(1,1));
-                destGom.setGomId(new AID("someGom2", AID.ISLOCALNAME));
-
-                // get other TRs
-                DFAgentDescription template = new DFAgentDescription();
-                ServiceDescription sd = new ServiceDescription();
-                sd.setName("factory1");
-                template.addServices(sd);
-                try {
-                    // add them as the receivers of the cfp
-                    DFAgentDescription[] result = DFService.search(bidder, template);
-                    responders = new ArrayList<>();
-                    for (int i = 0; i < result.length; ++i) {
-                        responders.add(result[i].getName());
-                    }
-                } catch (FIPAException fe) {
-                    fe.printStackTrace();
-                }
-                if (responders.size() > 0) {
-                    // initialize cfp
-                    ACLMessage bid = new ACLMessage(ACLMessage.CFP);
-                    for (int i = 0; i < responders.size(); ++i) {
-                        if(!responders.get(i).equals(getAID()))
-                            bid.addReceiver(responders.get(i));
-                    }
-
-                    bid.setOntology(onto.getName());
-                    bid.setLanguage(codec.getName());
-
-                    GetHelp gh = new GetHelp();
-                    Proposal prop = new Proposal();
-                    // based on the message from the gom
-                    prop.setSrcGom(myGom);
-                    prop.setDestGom(destGom);
-                    prop.setProposalId(r.nextInt());
-                    prop.setTrNumber(trNumber);
-                    prop.setTokens(tokens);
-                    gh.setProposal(prop);
-
-                    Action a = new Action(getAID(), gh);
-                    try {
-                        getContentManager().fillContent(bid, a);
-                    } catch (Codec.CodecException ce) {
-                        ce.printStackTrace();
-                    } catch (OntologyException oe) {
-                        oe.printStackTrace();
-                    }
-
-                    bidder.addBehaviour(new ContractNetInitiator(bidder,bid){
-                        @Override
-                        protected void handleAllResponses(Vector responses, Vector acceptances) {
-                            System.out.println("HANDLE RESPONSES");
-                            java.util.ArrayList<ACLMessage> results = new java.util.ArrayList<>();
-                            // process all the utility function results
-                            for(Object proposal:responses){
-                                if(((ACLMessage)proposal).getPerformative()==ACLMessage.PROPOSE){
-                                    results.add((ACLMessage)proposal);
-                                }
-                            }
-                            MessageComparator comparator = new MessageComparator();
-                            Collections.sort(results, comparator);
-                            // accept best trNumber proposals
-                            for(int i=0;i<trNumber;i++){
-                                ACLMessage m = results.get(i);
-                                m.setPerformative(ACLMessage.ACCEPT_PROPOSAL);
-                                acceptances.add(m);
-                                System.out.println("ACCEPT REPLY: "+m);
-                            }
-                        }
-
-
-                    });
-
-                }
+        // get other TRs
+        DFAgentDescription template = new DFAgentDescription();
+        ServiceDescription sd = new ServiceDescription();
+        sd.setName("factory1");
+        template.addServices(sd);
+        try {
+            // add them as the receivers of the cfp
+            DFAgentDescription[] result = DFService.search(bidder, template);
+            responders = new ArrayList<>();
+            for (int i = 0; i < result.length; ++i) {
+                responders.add(result[i].getName());
             }
-        });
-    }
+        } catch (FIPAException fe) {
+            fe.printStackTrace();
+        }
+        if (responders.size() > 0) {
+            // initialize cfp
+            for (int i = 0; i < responders.size(); ++i) {
+                if (!responders.get(i).equals(getAID()))
+                    bid.addReceiver(responders.get(i));
+            }
 
+            bid.setOntology(onto.getName());
+            bid.setLanguage(codec.getName());
 
-    @Override
-    protected void takeDown() {
-        super.takeDown();
-    }
+            GetHelp gh = new GetHelp();
+            Proposal prop = new Proposal();
 
-    private class MessageComparator implements Comparator<ACLMessage>{
+            // to be retrieved from the gomRequest
+            prop.setSrcGom(myGom);
+            prop.setDestGom(destGom);
+            prop.setProposalId(new Random().nextInt());
+            prop.setTrNumber(trNumber);
+            prop.setTokens(tokens);
+            gh.setProposal(prop);
 
-        @Override
-        public int compare(ACLMessage o1, ACLMessage o2) {
+            Action a = new Action(getAID(), gh);
             try {
-                ContentElement ce1 = getContentManager().extractContent(o1);
-                ContentElement ce2 = getContentManager().extractContent(o2);
-                if (ce1 instanceof SendResult && ce2 instanceof SendResult) {
-                    float r1 = ((SendResult) ce1).getResult();
-                    float r2 = ((SendResult) ce2).getResult();
-                    if(r1 > r2) return -1;
-                    if(r1 < r2) return 1;
-                    return 0;
-                }
+                getContentManager().fillContent(bid, a);
             } catch (Codec.CodecException ce) {
                 ce.printStackTrace();
             } catch (OntologyException oe) {
                 oe.printStackTrace();
             }
-
-            return -1;
+            System.out.println(bid);
         }
+
+        return trNumber;
+    }
+
+    @Override
+    protected void takeDown() {
+        super.takeDown();
     }
 }
