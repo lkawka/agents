@@ -23,24 +23,23 @@ import utils.Position;
 import java.util.*;
 
 public class TR extends Agent {
-    private Integer id;
+    private String id;
     private Codec codec = new SLCodec();
     private Ontology onto = BiddingOntology.getInstance();
     private GoM myGom;
-
-    public TR(Integer id){
-        this.id = id;
-    }
 
     @Override
     protected void setup() {
         super.setup();
 
+        Object[] args = getArguments();
+        this.id = args[0].toString();
+
         // add oneself to the df
         addToDf();
 
         // info on TR's gom
-        myGom = getMyGom();
+        // myGom = getMyGom();
 
         getContentManager().registerLanguage(codec, FIPANames.ContentLanguage.FIPA_SL);
         getContentManager().registerOntology(onto);
@@ -77,15 +76,6 @@ public class TR extends Agent {
             }
         });
     }
-
-    private GoM getMyGom(){
-        // TODO get myGom from df
-        myGom = new GoM(this.id, new Position(0, 0));
-        myGom.setGomId(new AID("someGom", AID.ISLOCALNAME));
-
-        return myGom;
-    }
-
 
     private void addToDf() {
         DFAgentDescription dfd = new DFAgentDescription();

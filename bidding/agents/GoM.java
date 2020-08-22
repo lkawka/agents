@@ -5,18 +5,19 @@ import jade.core.Agent;
 import utils.Position;
 
 public class GoM extends Agent {
-    private Integer id;
+    private String id;
     private AID gomId;
     private Position position;
 
-    public GoM(Integer id, Position position){
-        this.id = id;
-        this.position = position;
-    }
 
     @Override
     protected void setup() {
         super.setup();
+
+        Object[] args = getArguments();
+
+        this.id = args[0].toString();
+        this.position = new Position(Integer.parseInt((String) args[1]), Integer.parseInt((String) args[2]));
     }
 
     public AID getGomId() {
