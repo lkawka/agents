@@ -1,3 +1,5 @@
+package agents;
+
 import behaviours.HelpInitiator;
 import behaviours.HelpResponder;
 import biddingOntology.*;
@@ -16,14 +18,19 @@ import jade.domain.FIPAException;
 import jade.domain.FIPANames;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
+import utils.Position;
 
 import java.util.*;
 
-public class Bidder extends Agent {
+public class TR extends Agent {
+    private Integer id;
     private Codec codec = new SLCodec();
-    //change to custom ontology
     private Ontology onto = BiddingOntology.getInstance();
-    private Gom myGom;
+    private GoM myGom;
+
+    public TR(Integer id){
+        this.id = id;
+    }
 
     @Override
     protected void setup() {
@@ -33,9 +40,7 @@ public class Bidder extends Agent {
         addToDf();
 
         // info on TR's gom
-        myGom = new Gom();
-        myGom.setGomId(new AID("someGom", AID.ISLOCALNAME));
-        myGom.setPosition(new Position(0, 0));
+        myGom = getMyGom();
 
         getContentManager().registerLanguage(codec, FIPANames.ContentLanguage.FIPA_SL);
         getContentManager().registerOntology(onto);
@@ -73,6 +78,14 @@ public class Bidder extends Agent {
         });
     }
 
+    private GoM getMyGom(){
+        // TODO get myGom from df
+        myGom = new GoM(this.id, new Position(0, 0));
+        myGom.setGomId(new AID("someGom", AID.ISLOCALNAME));
+
+        return myGom;
+    }
+
 
     private void addToDf() {
         DFAgentDescription dfd = new DFAgentDescription();
@@ -94,9 +107,14 @@ public class Bidder extends Agent {
         // to be retrieved from the gomRequest
         int trNumber = 2;
         int tokens = 10;
-        Gom destGom = new Gom();
-        destGom.setPosition(new Position(1, 1));
+
+        GomInfo destGom = new GomInfo();
+        destGom.setPosition(new PositionInfo(1, 1));
         destGom.setGomId(new AID("someGom2", AID.ISLOCALNAME));
+
+        GomInfo srcGom = new GomInfo();
+        destGom.setPosition(new PositionInfo(0, 0));
+        destGom.setGomId(new AID("someGom", AID.ISLOCALNAME));
 
         // get other TRs
         DFAgentDescription template = new DFAgentDescription();
@@ -127,7 +145,7 @@ public class Bidder extends Agent {
             Proposal prop = new Proposal();
 
             // to be retrieved from the gomRequest
-            prop.setSrcGom(myGom);
+            prop.setSrcGom(srcGom);
             prop.setDestGom(destGom);
             prop.setProposalId(new Random().nextInt());
             prop.setTrNumber(trNumber);

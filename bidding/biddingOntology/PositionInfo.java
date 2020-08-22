@@ -2,14 +2,14 @@ package biddingOntology;
 
 import jade.content.Concept;
 
-public class Position implements Concept {
+public class PositionInfo implements Concept {
     private Integer x,y;
 
-    public Position(){
+    public PositionInfo(){
 
     }
 
-    public Position(int x, int y){
+    public PositionInfo(int x, int y){
         this.x = x;
         this.y = y;
     }

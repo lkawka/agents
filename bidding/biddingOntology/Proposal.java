@@ -5,7 +5,7 @@ import jade.content.Concept;
 public class Proposal implements Concept {
     private Integer proposalId;
     private Integer trNumber;
-    private Gom destGom, srcGom;
+    private GomInfo destGom, srcGom;
     private Integer tokens;
 
     public Integer getProposalId() {
@@ -24,19 +24,19 @@ public class Proposal implements Concept {
         this.trNumber = trNumber;
     }
 
-    public Gom getDestGom() {
+    public GomInfo getDestGom() {
         return destGom;
     }
 
-    public void setDestGom(Gom destGom) {
+    public void setDestGom(GomInfo destGom) {
         this.destGom = destGom;
     }
 
-    public Gom getSrcGom() {
+    public GomInfo getSrcGom() {
         return srcGom;
     }
 
-    public void setSrcGom(Gom srcGom) {
+    public void setSrcGom(GomInfo srcGom) {
         this.srcGom = srcGom;
     }
 

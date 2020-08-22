@@ -44,9 +44,9 @@ public class BiddingOntology extends Ontology {
         super(ONTOLOGY_NAME, BasicOntology.getInstance());
 
         try{
-            add(new ConceptSchema(POSITION), Position.class);
+            add(new ConceptSchema(POSITION), PositionInfo.class);
             add(new ConceptSchema(PROPOSAL), Proposal.class);
-            add(new ConceptSchema(GOM), Gom.class);
+            add(new ConceptSchema(GOM), GomInfo.class);
             add(new AgentActionSchema(GET_HELP), GetHelp.class);
             add(new AgentActionSchema(SEND_RESULT), SendResult.class);
 
